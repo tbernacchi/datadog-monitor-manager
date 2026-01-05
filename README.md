@@ -68,6 +68,9 @@ export DD_APP_KEY='your-app-key'
 
 # Show only tags from a specific monitor
 ./datadog-monitor-manager list --monitor-id 12345 --tags-only
+
+# List monitors with complex query
+./datadog-monitor-manager list --query "service:(service1 OR service2 OR service3)"
 ```
 
 ### Describe Monitor
@@ -148,6 +151,11 @@ export DD_APP_KEY='your-app-key'
   --env hml \
   --filter-tags "kubernetes,production" \
   --tag team:backend
+
+# Add tags to monitors matching a complex query
+./datadog-monitor-manager add-tags \
+  --query "service:(service1 OR service2 OR service3)" \
+  --tag squad:parcerias
 ```
 
 ### Remove Tags
@@ -333,6 +341,7 @@ List existing monitors with optional filters.
 - `--env` - Filter by environment
 - `--namespace` - Filter by namespace
 - `--tags` - Search in all tags (like UI search box)
+- `--query` - Complex search query (e.g., service:(service1 OR service2))
 - `--tags-only` - Show only tags from monitors (one per line, sorted)
 - `--monitor-id` - Get tags from a specific monitor (use with --tags-only)
 - `--simple` - Simple output format (ID and name only)
@@ -382,9 +391,10 @@ Add tags to a single monitor or multiple monitors matching filters.
 - `--env` - Filter by environment (for multiple monitors)
 - `--namespace` - Filter by namespace (for multiple monitors)
 - `--filter-tags` - Filter by tags (comma-separated, for multiple monitors)
+- `--query` - Complex search query (e.g., service:(service1 OR service2)) for multiple monitors
 - `--tag` (required) - Tags to add (can be used multiple times)
 
-**Note:** Either `--monitor-id` or filter flags (`--service`, `--env`, `--namespace`) must be provided.
+**Note:** Either `--monitor-id` or filter flags (`--service`, `--env`, `--namespace`, `--filter-tags`, `--query`) must be provided. Cannot use `--query` together with other filter flags.
 
 ### `remove-tags`
 Remove tags from a single monitor or multiple monitors matching filters.

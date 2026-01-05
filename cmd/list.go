@@ -23,7 +23,8 @@ Examples:
   list --tags service:myapp --limit 5    # List with tag filter and limit
   list --tags-only                        # Show only unique tags from all monitors
   list --service myapp --tags-only       # Show only tags from monitors with service tag
-  list --monitor-id 12345 --tags-only    # Show only tags from monitor ID 12345`,
+  list --monitor-id 12345 --tags-only    # Show only tags from monitor ID 12345
+  list --query "service:(service1 OR service2)" # List monitors with complex query`,
 	RunE: runList,
 }
 
@@ -32,6 +33,7 @@ var (
 	listEnv       string
 	listNamespace string
 	listTags      string
+	listQuery     string
 	listSimple    bool
 	listTagsOnly  bool
 	listMonitorID int
@@ -44,6 +46,7 @@ func init() {
 	listCmd.Flags().StringVar(&listEnv, "env", "", "Filter by environment")
 	listCmd.Flags().StringVar(&listNamespace, "namespace", "", "Filter by namespace")
 	listCmd.Flags().StringVar(&listTags, "tags", "", "Search in all tags (like UI search box)")
+	listCmd.Flags().StringVar(&listQuery, "query", "", "Complex search query (e.g., service:(service1 OR service2))")
 	listCmd.Flags().BoolVar(&listSimple, "simple", false, "Simple output format (ID and name only)")
 	listCmd.Flags().BoolVar(&listTagsOnly, "tags-only", false, "Show only tags from monitors")
 	listCmd.Flags().IntVar(&listMonitorID, "monitor-id", 0, "Get tags from a specific monitor (use with --tags-only)")
@@ -76,19 +79,12 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// If tags flag is empty but we have positional args that look like tags, use them
-	if listTags == "" && len(args) > 0 {
-		for _, arg := range args {
-			// If argument contains ':', treat it as a tag
-			if strings.Contains(arg, ":") {
-				listTags = arg
-				break
-			}
-		}
-	}
-
 	var monitors []datadog.Monitor
-	if listTags != "" {
+	
+	// If query flag is set, use it directly
+	if listQuery != "" {
+		monitors, err = client.ListMonitors(nil, listQuery)
+	} else if listTags != "" {
 		// If the search text looks like a tag (contains ':'), use tag filter directly
 		if strings.Contains(listTags, ":") {
 			// Use exact tag filter via API
@@ -100,21 +96,38 @@ func runList(cmd *cobra.Command, args []string) error {
 			monitors, err = client.ListMonitors(nil, listTags)
 		}
 	} else {
-		var tags []string
-		if listService != "" {
-			tags = append(tags, fmt.Sprintf("service:%s", listService))
+		// If tags flag is empty but we have positional args that look like tags, use them
+		if len(args) > 0 {
+			for _, arg := range args {
+				// If argument contains ':', treat it as a tag
+				if strings.Contains(arg, ":") {
+					listTags = arg
+					break
+				}
+			}
 		}
-		if listEnv != "" {
-			tags = append(tags, fmt.Sprintf("env:%s", listEnv))
-		}
-		if listNamespace != "" {
-			tags = append(tags, fmt.Sprintf("namespace:%s", listNamespace))
-		}
-
-		if len(tags) > 0 {
+		
+		if listTags != "" {
+			exactTag := listTags
+			tags := []string{exactTag}
 			monitors, err = client.ListMonitors(tags, "")
 		} else {
-			monitors, err = client.ListMonitors(nil, "")
+			var tags []string
+			if listService != "" {
+				tags = append(tags, fmt.Sprintf("service:%s", listService))
+			}
+			if listEnv != "" {
+				tags = append(tags, fmt.Sprintf("env:%s", listEnv))
+			}
+			if listNamespace != "" {
+				tags = append(tags, fmt.Sprintf("namespace:%s", listNamespace))
+			}
+
+			if len(tags) > 0 {
+				monitors, err = client.ListMonitors(tags, "")
+			} else {
+				monitors, err = client.ListMonitors(nil, "")
+			}
 		}
 	}
 
