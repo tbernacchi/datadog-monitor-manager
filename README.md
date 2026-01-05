@@ -59,6 +59,15 @@ export DD_APP_KEY='your-app-key'
 
 # Search by tags
 ./datadog-monitor-manager list --tags whatsapp
+
+# Show only tags from all monitors
+./datadog-monitor-manager list --tags-only
+
+# Show only tags from monitors with a specific service
+./datadog-monitor-manager list --service myapp --tags-only
+
+# Show only tags from a specific monitor
+./datadog-monitor-manager list --monitor-id 12345 --tags-only
 ```
 
 ### Describe Monitor
@@ -324,6 +333,10 @@ List existing monitors with optional filters.
 - `--env` - Filter by environment
 - `--namespace` - Filter by namespace
 - `--tags` - Search in all tags (like UI search box)
+- `--tags-only` - Show only tags from monitors (one per line, sorted)
+- `--monitor-id` - Get tags from a specific monitor (use with --tags-only)
+- `--simple` - Simple output format (ID and name only)
+- `--limit` - Limit number of monitors to show
 
 ### `describe`
 Show detailed information about a specific monitor.

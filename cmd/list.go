@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
@@ -19,7 +20,10 @@ Examples:
   list                                    # List all monitors
   list service:myapp                      # List monitors with exact tag
   list --service myapp                    # List monitors with service tag
-  list --tags service:myapp --limit 5    # List with tag filter and limit`,
+  list --tags service:myapp --limit 5    # List with tag filter and limit
+  list --tags-only                        # Show only unique tags from all monitors
+  list --service myapp --tags-only       # Show only tags from monitors with service tag
+  list --monitor-id 12345 --tags-only    # Show only tags from monitor ID 12345`,
 	RunE: runList,
 }
 
@@ -29,6 +33,8 @@ var (
 	listNamespace string
 	listTags      string
 	listSimple    bool
+	listTagsOnly  bool
+	listMonitorID int
 	listLimit     int
 )
 
@@ -39,6 +45,8 @@ func init() {
 	listCmd.Flags().StringVar(&listNamespace, "namespace", "", "Filter by namespace")
 	listCmd.Flags().StringVar(&listTags, "tags", "", "Search in all tags (like UI search box)")
 	listCmd.Flags().BoolVar(&listSimple, "simple", false, "Simple output format (ID and name only)")
+	listCmd.Flags().BoolVar(&listTagsOnly, "tags-only", false, "Show only tags from monitors")
+	listCmd.Flags().IntVar(&listMonitorID, "monitor-id", 0, "Get tags from a specific monitor (use with --tags-only)")
 	listCmd.Flags().IntVar(&listLimit, "limit", 0, "Limit number of monitors to show (e.g., --limit 1 for one example)")
 }
 
@@ -47,6 +55,25 @@ func runList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
 		return err
+	}
+
+	// If monitor-id is specified with tags-only, get that specific monitor
+	if listMonitorID > 0 && listTagsOnly {
+		monitor, err := client.GetMonitor(listMonitorID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Error getting monitor: %v\n", err)
+			return err
+		}
+
+		// Print tags, one per line, sorted
+		tags := make([]string, len(monitor.Tags))
+		copy(tags, monitor.Tags)
+		sort.Strings(tags)
+
+		for _, tag := range tags {
+			fmt.Println(tag)
+		}
+		return nil
 	}
 
 	// If tags flag is empty but we have positional args that look like tags, use them
@@ -99,6 +126,29 @@ func runList(cmd *cobra.Command, args []string) error {
 	// Apply limit if specified
 	if listLimit > 0 && len(monitors) > listLimit {
 		monitors = monitors[:listLimit]
+	}
+
+	if listTagsOnly {
+		// Collect all unique tags
+		tagSet := make(map[string]bool)
+		for _, monitor := range monitors {
+			for _, tag := range monitor.Tags {
+				tagSet[tag] = true
+			}
+		}
+		
+		// Convert to slice and sort for consistent output
+		var tags []string
+		for tag := range tagSet {
+			tags = append(tags, tag)
+		}
+		sort.Strings(tags)
+		
+		// Print tags, one per line
+		for _, tag := range tags {
+			fmt.Println(tag)
+		}
+		return nil
 	}
 
 	if listSimple {
