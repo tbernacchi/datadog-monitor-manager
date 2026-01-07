@@ -156,6 +156,12 @@ export DD_APP_KEY='your-app-key'
 ./datadog-monitor-manager add-tags \
   --query "service:(service1 OR service2 OR service3)" \
   --tag squad:parcerias
+
+# Add tags to monitors in a specific state (e.g., Alert/Warn/No Data/OK)
+./datadog-monitor-manager add-tags \
+  --query "service:(service1 OR service2 OR service3)" \
+  --status "Alert" \
+  --tag squad:parcerias
 ```
 
 ### Remove Tags
@@ -181,6 +187,12 @@ export DD_APP_KEY='your-app-key'
   --env hml \
   --filter-tags "kubernetes,production" \
   --tag team:backend
+
+# Remove tags from monitors matching a complex query and state
+./datadog-monitor-manager remove-tags \
+  --query "service:(service1 OR service2 OR service3)" \
+  --status "No Data" \
+  --tag squad:parcerias
 ```
 
 ## Project Structure
@@ -392,6 +404,7 @@ Add tags to a single monitor or multiple monitors matching filters.
 - `--namespace` - Filter by namespace (for multiple monitors)
 - `--filter-tags` - Filter by tags (comma-separated, for multiple monitors)
 - `--query` - Complex search query (e.g., service:(service1 OR service2)) for multiple monitors
+- `--status` - Filter by monitor state (e.g., No Data, Alert, Warn, OK) for multiple monitors
 - `--tag` (required) - Tags to add (can be used multiple times)
 
 **Note:** Either `--monitor-id` or filter flags (`--service`, `--env`, `--namespace`, `--filter-tags`, `--query`) must be provided. Cannot use `--query` together with other filter flags.
@@ -405,9 +418,11 @@ Remove tags from a single monitor or multiple monitors matching filters.
 - `--env` - Filter by environment (for multiple monitors)
 - `--namespace` - Filter by namespace (for multiple monitors)
 - `--filter-tags` - Filter by tags (comma-separated, for multiple monitors)
+- `--query` - Complex search query (e.g., service:(service1 OR service2)) for multiple monitors
+- `--status` - Filter by monitor state (e.g., No Data, Alert, Warn, OK) for multiple monitors
 - `--tag` (required) - Tags to remove (can be used multiple times)
 
-**Note:** Either `--monitor-id` or filter flags (`--service`, `--env`, `--namespace`) must be provided.
+**Note:** Either `--monitor-id` or filter flags (`--service`, `--env`, `--namespace`, `--filter-tags`, `--query`) must be provided. Cannot use `--query` together with other filter flags.
 
 ## License
 

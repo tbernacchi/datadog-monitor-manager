@@ -142,6 +142,18 @@ func runList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Filter by status if specified
+	if listStatus != "" {
+		var filteredMonitors []datadog.Monitor
+		for _, monitor := range monitors {
+			// Normalize status comparison (case-insensitive)
+			if strings.EqualFold(monitor.OverallState, listStatus) {
+				filteredMonitors = append(filteredMonitors, monitor)
+			}
+		}
+		monitors = filteredMonitors
+	}
+
 	// Apply limit if specified
 	if listLimit > 0 && len(monitors) > listLimit {
 		monitors = monitors[:listLimit]
@@ -171,9 +183,13 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	if listSimple {
-		// Simple format: just ID and name
+		// Simple format: ID, State, and name
 		for _, monitor := range monitors {
-			fmt.Printf("%d\t%s\n", monitor.ID, monitor.Name)
+			state := monitor.OverallState
+			if state == "" {
+				state = "OK"
+			}
+			fmt.Printf("%d\t%s\t%s\n", monitor.ID, state, monitor.Name)
 		}
 		return nil
 	}
