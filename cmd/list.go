@@ -190,14 +190,22 @@ func runList(cmd *cobra.Command, args []string) error {
 	fmt.Println(strings.Repeat("-", 80))
 
 	for _, monitor := range monitors {
-		status := "🟢 Enabled"
+		enabledStatus := "🟢 Enabled"
 		if monitor.OverallState == "muted" {
-			status = "🔴 Disabled"
+			enabledStatus = "🔴 Disabled"
 		}
+		
+		// Show alert state if available
+		alertState := monitor.OverallState
+		if alertState == "" {
+			alertState = "OK"
+		}
+		
 		fmt.Printf("\nID: %d\n", monitor.ID)
 		fmt.Printf("Name: %s\n", monitor.Name)
 		fmt.Printf("Type: %s\n", monitor.Type)
-		fmt.Printf("Status: %s\n", status)
+		fmt.Printf("Status: %s\n", enabledStatus)
+		fmt.Printf("State: %s\n", alertState)
 		if len(monitor.Tags) > 0 {
 			fmt.Printf("Tags: %s\n", strings.Join(monitor.Tags, ", "))
 		} else {
