@@ -24,7 +24,11 @@ Examples:
   list --tags-only                        # Show only unique tags from all monitors
   list --service myapp --tags-only       # Show only tags from monitors with service tag
   list --monitor-id 12345 --tags-only    # Show only tags from monitor ID 12345
-  list --query "service:(service1 OR service2)" # List monitors with complex query`,
+  list --query "service:(service1 OR service2)" # List monitors with complex query
+  list --status "No Data"                       # List monitors with No Data status
+  list --query "..." --status "No Data"         # Combine query and status filter
+  list --status "No Data"                       # List monitors with No Data status
+  list --query "..." --status "No Data"         # Combine query and status filter`,
 	RunE: runList,
 }
 
@@ -34,6 +38,7 @@ var (
 	listNamespace string
 	listTags      string
 	listQuery     string
+	listStatus    string
 	listSimple    bool
 	listTagsOnly  bool
 	listMonitorID int
@@ -47,6 +52,7 @@ func init() {
 	listCmd.Flags().StringVar(&listNamespace, "namespace", "", "Filter by namespace")
 	listCmd.Flags().StringVar(&listTags, "tags", "", "Search in all tags (like UI search box)")
 	listCmd.Flags().StringVar(&listQuery, "query", "", "Complex search query (e.g., service:(service1 OR service2))")
+	listCmd.Flags().StringVar(&listStatus, "status", "", "Filter by monitor status (e.g., No Data, Alert, Warn, OK, muted)")
 	listCmd.Flags().BoolVar(&listSimple, "simple", false, "Simple output format (ID and name only)")
 	listCmd.Flags().BoolVar(&listTagsOnly, "tags-only", false, "Show only tags from monitors")
 	listCmd.Flags().IntVar(&listMonitorID, "monitor-id", 0, "Get tags from a specific monitor (use with --tags-only)")
