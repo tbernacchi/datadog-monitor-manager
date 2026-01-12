@@ -194,6 +194,9 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 		if addTagsStatus != "" {
 			fmt.Printf("🚦 Status: %s\n", addTagsStatus)
 		}
+		if addTagsFilterServices != "" {
+			fmt.Printf("🔍 Filter Services: %s\n", addTagsFilterServices)
+		}
 
 		var filterTags []string
 		if addTagsFilterTags != "" {
@@ -208,16 +211,25 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 		fmt.Println(strings.Repeat("=", 80))
 
 		var results []map[string]interface{}
-		if addTagsStatus == "" {
-			// Keep existing behavior (more efficient) when status filter is not requested
+		if addTagsStatus == "" && addTagsFilterServices == "" {
+			// Keep existing behavior (more efficient) when status/filter-services filter is not requested
 			results, err = client.AddTagsToMonitors(addTagsService, addTagsEnv, addTagsNamespace, filterTags, addTagsTags)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "❌ Error adding tags: %v\n", err)
 				return err
 			}
 		} else {
-			// When filtering by status, we need to list and filter locally
-			monitors, err := client.ListMonitors(filterTags, "")
+			// When filtering by status or filter-services, we need to list and filter locally
+			// Check if filterTags contains wildcards - if so, use as query instead
+			var monitors []datadog.Monitor
+			var err error
+			if len(filterTags) > 0 && (strings.Contains(filterTags[0], "*") || strings.Contains(filterTags[0], "?")) {
+				// Wildcard pattern - use as query
+				monitors, err = client.ListMonitors(nil, filterTags[0])
+			} else {
+				// Exact tags - use as tag filter
+				monitors, err = client.ListMonitors(filterTags, "")
+			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "❌ Error listing monitors: %v\n", err)
 				return err
@@ -225,19 +237,24 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 
 			monitors = filterMonitorsByServiceEnvNamespace(monitors, addTagsService, addTagsEnv, addTagsNamespace)
 		
-		if addTagsFilterServices != "" {
-			services := strings.Split(addTagsFilterServices, ",")
-			for i := range services {
-				services[i] = strings.TrimSpace(services[i])
+			if addTagsFilterServices != "" {
+				services := strings.Split(addTagsFilterServices, ",")
+				for i := range services {
+					services[i] = strings.TrimSpace(services[i])
+				}
+				monitors = filterMonitorsByServices(monitors, services)
 			}
-			monitors = filterMonitorsByServices(monitors, services)
-		}
-			monitors = filterMonitorsByState(monitors, addTagsStatus)
+			
+			if addTagsStatus != "" {
+				monitors = filterMonitorsByState(monitors, addTagsStatus)
+			}
 
 			if len(monitors) == 0 {
-				fmt.Println("ℹ️  No monitors found matching the specified filters/status")
+				fmt.Println("ℹ️  No monitors found matching the specified filters")
 				return nil
 			}
+			
+			fmt.Printf("📊 Found %d monitor(s) matching the filters\n\n", len(monitors))
 
 			for _, monitor := range monitors {
 				updated, err := client.AddTagsToMonitor(monitor.ID, addTagsTags)
