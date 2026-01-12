@@ -17,14 +17,15 @@ var addTagsCmd = &cobra.Command{
 }
 
 var (
-	addTagsMonitorID  int
-	addTagsService    string
-	addTagsEnv        string
-	addTagsNamespace  string
-	addTagsFilterTags string
-	addTagsQuery      string
-	addTagsStatus     string
-	addTagsTags       []string
+	addTagsMonitorID     int
+	addTagsService       string
+	addTagsEnv           string
+	addTagsNamespace     string
+	addTagsFilterTags    string
+	addTagsQuery         string
+	addTagsStatus        string
+	addTagsFilterServices string
+	addTagsTags          []string
 )
 
 func init() {
@@ -36,6 +37,7 @@ func init() {
 	addTagsCmd.Flags().StringVar(&addTagsFilterTags, "filter-tags", "", "Filter by tags (comma-separated, for multiple monitors)")
 	addTagsCmd.Flags().StringVar(&addTagsQuery, "query", "", "Complex search query (e.g., service:(service1 OR service2))")
 	addTagsCmd.Flags().StringVar(&addTagsStatus, "status", "", "Filter by monitor state (e.g., No Data, Alert, Warn, OK) when updating multiple monitors")
+	addTagsCmd.Flags().StringVar(&addTagsFilterServices, "filter-services", "", "Filter by multiple services (comma-separated, filters locally after query/tags)")
 	addTagsCmd.Flags().StringArrayVar(&addTagsTags, "tag", []string{}, "Tags to add (required, can be used multiple times)")
 	addTagsCmd.MarkFlagRequired("tag")
 }
@@ -96,8 +98,16 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 			monitors = filterMonitorsByState(monitors, addTagsStatus)
 		}
 		
+		if addTagsFilterServices != "" {
+			services := strings.Split(addTagsFilterServices, ",")
+			for i := range services {
+				services[i] = strings.TrimSpace(services[i])
+			}
+			monitors = filterMonitorsByServices(monitors, services)
+		}
+		
 		if len(monitors) == 0 {
-			fmt.Println("ℹ️  No monitors found matching the specified query/status")
+			fmt.Println("ℹ️  No monitors found matching the specified query/status/filters")
 			return nil
 		}
 		
@@ -214,6 +224,14 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 			}
 
 			monitors = filterMonitorsByServiceEnvNamespace(monitors, addTagsService, addTagsEnv, addTagsNamespace)
+		
+		if addTagsFilterServices != "" {
+			services := strings.Split(addTagsFilterServices, ",")
+			for i := range services {
+				services[i] = strings.TrimSpace(services[i])
+			}
+			monitors = filterMonitorsByServices(monitors, services)
+		}
 			monitors = filterMonitorsByState(monitors, addTagsStatus)
 
 			if len(monitors) == 0 {
@@ -352,4 +370,21 @@ func hasExactTag(tags []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func filterMonitorsByServices(monitors []datadog.Monitor, services []string) []datadog.Monitor {
+	if len(services) == 0 {
+		return monitors
+	}
+	
+	var filtered []datadog.Monitor
+	for _, monitor := range monitors {
+		for _, service := range services {
+			if hasExactTag(monitor.Tags, fmt.Sprintf("service:%s", service)) {
+				filtered = append(filtered, monitor)
+				break // Found a match, move to next monitor
+			}
+		}
+	}
+	return filtered
 }

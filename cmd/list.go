@@ -33,16 +33,17 @@ Examples:
 }
 
 var (
-	listService   string
-	listEnv       string
-	listNamespace string
-	listTags      string
-	listQuery     string
-	listStatus    string
-	listSimple    bool
-	listTagsOnly  bool
-	listMonitorID int
-	listLimit     int
+	listService        string
+	listEnv            string
+	listNamespace      string
+	listTags           string
+	listQuery          string
+	listStatus         string
+	listFilterServices string
+	listSimple         bool
+	listTagsOnly       bool
+	listMonitorID      int
+	listLimit          int
 )
 
 func init() {
@@ -53,6 +54,7 @@ func init() {
 	listCmd.Flags().StringVar(&listTags, "tags", "", "Search in all tags (like UI search box)")
 	listCmd.Flags().StringVar(&listQuery, "query", "", "Complex search query (e.g., service:(service1 OR service2))")
 	listCmd.Flags().StringVar(&listStatus, "status", "", "Filter by monitor status (e.g., No Data, Alert, Warn, OK, muted)")
+	listCmd.Flags().StringVar(&listFilterServices, "filter-services", "", "Filter by multiple services (comma-separated, filters locally after query/tags)")
 	listCmd.Flags().BoolVar(&listSimple, "simple", false, "Simple output format (ID and name only)")
 	listCmd.Flags().BoolVar(&listTagsOnly, "tags-only", false, "Show only tags from monitors")
 	listCmd.Flags().IntVar(&listMonitorID, "monitor-id", 0, "Get tags from a specific monitor (use with --tags-only)")
@@ -150,6 +152,28 @@ func runList(cmd *cobra.Command, args []string) error {
 			if strings.EqualFold(monitor.OverallState, listStatus) {
 				filteredMonitors = append(filteredMonitors, monitor)
 			}
+		}
+		monitors = filteredMonitors
+	}
+
+	// Filter by services if specified
+	if listFilterServices != "" {
+		services := strings.Split(listFilterServices, ",")
+		for i := range services {
+			services[i] = strings.TrimSpace(services[i])
+		}
+		var filteredMonitors []datadog.Monitor
+		for _, monitor := range monitors {
+			for _, service := range services {
+				tag := fmt.Sprintf("service:%s", service)
+				for _, monitorTag := range monitor.Tags {
+					if monitorTag == tag {
+						filteredMonitors = append(filteredMonitors, monitor)
+						goto nextMonitor
+					}
+				}
+			}
+		nextMonitor:
 		}
 		monitors = filteredMonitors
 	}

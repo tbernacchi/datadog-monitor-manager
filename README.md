@@ -162,6 +162,12 @@ export DD_APP_KEY='your-app-key'
   --query "service:(service1 OR service2 OR service3)" \
   --status "Alert" \
   --tag squad:parcerias
+
+# Add tags filtering by tags and multiple services (filters locally)
+./datadog-monitor-manager add-tags \
+  --filter-tags "noc*" \
+  --filter-services "service1,service2,service3" \
+  --tag squad:parcerias
 ```
 
 ### Remove Tags
@@ -354,9 +360,11 @@ List existing monitors with optional filters.
 - `--namespace` - Filter by namespace
 - `--tags` - Search in all tags (like UI search box)
 - `--query` - Complex search query (e.g., service:(service1 OR service2))
+- `--status` - Filter by monitor status (e.g., No Data, Alert, Warn, OK, muted)
+- `--filter-services` - Filter by multiple services (comma-separated, filters locally after query/tags)
 - `--tags-only` - Show only tags from monitors (one per line, sorted)
 - `--monitor-id` - Get tags from a specific monitor (use with --tags-only)
-- `--simple` - Simple output format (ID and name only)
+- `--simple` - Simple output format (ID, State, and name)
 - `--limit` - Limit number of monitors to show
 
 ### `describe`
@@ -405,6 +413,7 @@ Add tags to a single monitor or multiple monitors matching filters.
 - `--filter-tags` - Filter by tags (comma-separated, for multiple monitors)
 - `--query` - Complex search query (e.g., service:(service1 OR service2)) for multiple monitors
 - `--status` - Filter by monitor state (e.g., No Data, Alert, Warn, OK) for multiple monitors
+- `--filter-services` - Filter by multiple services (comma-separated, filters locally after query/tags)
 - `--tag` (required) - Tags to add (can be used multiple times)
 
 **Note:** Either `--monitor-id` or filter flags (`--service`, `--env`, `--namespace`, `--filter-tags`, `--query`) must be provided. Cannot use `--query` together with other filter flags.
