@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 	"github.com/spf13/cobra"
+	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 )
 
 var listCmd = &cobra.Command{
@@ -88,7 +88,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	var monitors []datadog.Monitor
-	
+
 	// If query flag is set, use it directly
 	if listQuery != "" {
 		monitors, err = client.ListMonitors(nil, listQuery)
@@ -114,7 +114,7 @@ func runList(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		
+
 		if listTags != "" {
 			exactTag := listTags
 			tags := []string{exactTag}
@@ -191,14 +191,14 @@ func runList(cmd *cobra.Command, args []string) error {
 				tagSet[tag] = true
 			}
 		}
-		
+
 		// Convert to slice and sort for consistent output
 		var tags []string
 		for tag := range tagSet {
 			tags = append(tags, tag)
 		}
 		sort.Strings(tags)
-		
+
 		// Print tags, one per line
 		for _, tag := range tags {
 			fmt.Println(tag)
@@ -234,13 +234,13 @@ func runList(cmd *cobra.Command, args []string) error {
 		if monitor.OverallState == "muted" {
 			enabledStatus = "🔴 Disabled"
 		}
-		
+
 		// Show alert state if available
 		alertState := monitor.OverallState
 		if alertState == "" {
 			alertState = "OK"
 		}
-		
+
 		fmt.Printf("\nID: %d\n", monitor.ID)
 		fmt.Printf("Name: %s\n", monitor.Name)
 		fmt.Printf("Type: %s\n", monitor.Type)

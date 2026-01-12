@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 	"github.com/spf13/cobra"
+	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 )
 
 var addTagsCmd = &cobra.Command{
@@ -17,15 +17,15 @@ var addTagsCmd = &cobra.Command{
 }
 
 var (
-	addTagsMonitorID     int
-	addTagsService       string
-	addTagsEnv           string
-	addTagsNamespace     string
-	addTagsFilterTags    string
-	addTagsQuery         string
-	addTagsStatus        string
+	addTagsMonitorID      int
+	addTagsService        string
+	addTagsEnv            string
+	addTagsNamespace      string
+	addTagsFilterTags     string
+	addTagsQuery          string
+	addTagsStatus         string
 	addTagsFilterServices string
-	addTagsTags          []string
+	addTagsTags           []string
 )
 
 func init() {
@@ -56,7 +56,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 	if addTagsMonitorID > 0 && (addTagsService != "" || addTagsEnv != "" || addTagsNamespace != "" || addTagsFilterTags != "" || addTagsQuery != "" || addTagsStatus != "") {
 		return fmt.Errorf("cannot use --monitor-id together with filter flags")
 	}
-	
+
 	// Cannot use --query together with other filter flags
 	if addTagsQuery != "" && (addTagsService != "" || addTagsEnv != "" || addTagsNamespace != "" || addTagsFilterTags != "") {
 		return fmt.Errorf("cannot use --query together with other filter flags (--service, --env, --namespace, --filter-tags)")
@@ -87,7 +87,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 			fmt.Printf("🚦 Status: %s\n", addTagsStatus)
 		}
 		fmt.Println(strings.Repeat("=", 80))
-		
+
 		monitors, err := client.ListMonitors(nil, addTagsQuery)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "❌ Error listing monitors: %v\n", err)
@@ -97,7 +97,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 		if addTagsStatus != "" {
 			monitors = filterMonitorsByState(monitors, addTagsStatus)
 		}
-		
+
 		if addTagsFilterServices != "" {
 			services := strings.Split(addTagsFilterServices, ",")
 			for i := range services {
@@ -105,14 +105,14 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 			}
 			monitors = filterMonitorsByServices(monitors, services)
 		}
-		
+
 		if len(monitors) == 0 {
 			fmt.Println("ℹ️  No monitors found matching the specified query/status/filters")
 			return nil
 		}
-		
+
 		fmt.Printf("📊 Found %d monitor(s) matching the query\n\n", len(monitors))
-		
+
 		// Add tags to each monitor
 		var results []map[string]interface{}
 		for _, monitor := range monitors {
@@ -132,7 +132,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 				})
 			}
 		}
-		
+
 		var successful []map[string]interface{}
 		var failed []map[string]interface{}
 
@@ -236,7 +236,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 			}
 
 			monitors = filterMonitorsByServiceEnvNamespace(monitors, addTagsService, addTagsEnv, addTagsNamespace)
-		
+
 			if addTagsFilterServices != "" {
 				services := strings.Split(addTagsFilterServices, ",")
 				for i := range services {
@@ -244,7 +244,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 				}
 				monitors = filterMonitorsByServices(monitors, services)
 			}
-			
+
 			if addTagsStatus != "" {
 				monitors = filterMonitorsByState(monitors, addTagsStatus)
 			}
@@ -253,7 +253,7 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 				fmt.Println("ℹ️  No monitors found matching the specified filters")
 				return nil
 			}
-			
+
 			fmt.Printf("📊 Found %d monitor(s) matching the filters\n\n", len(monitors))
 
 			for _, monitor := range monitors {
@@ -329,79 +329,4 @@ func runAddTags(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func canonicalMonitorState(s string) string {
-	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "-", " ")
-	s = strings.ReplaceAll(s, "_", " ")
-	// collapse repeated spaces
-	for strings.Contains(s, "  ") {
-		s = strings.ReplaceAll(s, "  ", " ")
-	}
-	return strings.ToLower(s)
-}
-
-func filterMonitorsByState(monitors []datadog.Monitor, desiredState string) []datadog.Monitor {
-	want := canonicalMonitorState(desiredState)
-	if want == "" {
-		return monitors
-	}
-	var filtered []datadog.Monitor
-	for _, m := range monitors {
-		if canonicalMonitorState(m.OverallState) == want {
-			filtered = append(filtered, m)
-		}
-	}
-	return filtered
-}
-
-func filterMonitorsByServiceEnvNamespace(monitors []datadog.Monitor, service, env, namespace string) []datadog.Monitor {
-	if service == "" && env == "" && namespace == "" {
-		return monitors
-	}
-
-	var filtered []datadog.Monitor
-	for _, monitor := range monitors {
-		matches := true
-		if service != "" && !hasExactTag(monitor.Tags, fmt.Sprintf("service:%s", service)) {
-			matches = false
-		}
-		if env != "" && !hasExactTag(monitor.Tags, fmt.Sprintf("env:%s", env)) {
-			matches = false
-		}
-		if namespace != "" && !hasExactTag(monitor.Tags, fmt.Sprintf("namespace:%s", namespace)) {
-			matches = false
-		}
-		if matches {
-			filtered = append(filtered, monitor)
-		}
-	}
-	return filtered
-}
-
-func hasExactTag(tags []string, want string) bool {
-	for _, t := range tags {
-		if t == want {
-			return true
-		}
-	}
-	return false
-}
-
-func filterMonitorsByServices(monitors []datadog.Monitor, services []string) []datadog.Monitor {
-	if len(services) == 0 {
-		return monitors
-	}
-	
-	var filtered []datadog.Monitor
-	for _, monitor := range monitors {
-		for _, service := range services {
-			if hasExactTag(monitor.Tags, fmt.Sprintf("service:%s", service)) {
-				filtered = append(filtered, monitor)
-				break // Found a match, move to next monitor
-			}
-		}
-	}
-	return filtered
 }

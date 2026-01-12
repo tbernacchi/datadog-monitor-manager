@@ -98,7 +98,7 @@ export DD_APP_KEY='your-app-key'
 ```bash
 # Apply template from a specific file
 ./datadog-monitor-manager template \
-  --service bff-whatsapp-tbernacchi-api \
+  --service bff-whatsapp-api \
   --env corp \
   --namespace bffwhatsappapi \
   --file templates/kubernetes-monitors.json
@@ -435,4 +435,4 @@ Remove tags from a single monitor or multiple monitors matching filters.
 
 ## License
 
-This project is part of the sre-tbernacchi-bkp repository.
+This project is part of the usable-tools repository.

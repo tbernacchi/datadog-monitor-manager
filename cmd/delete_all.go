@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 	"github.com/spf13/cobra"
+	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 )
 
 var deleteAllCmd = &cobra.Command{
@@ -192,4 +192,3 @@ func runDeleteAll(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-

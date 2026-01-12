@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 	"github.com/spf13/cobra"
+	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 )
 
 var templateCmd = &cobra.Command{
@@ -18,13 +18,13 @@ var templateCmd = &cobra.Command{
 }
 
 var (
-	templateService    string
-	templateEnv        string
-	templateNamespace  string
-	templateFile       string
-	templateDir        string
-	templateNoUpsert   bool
-	templateTags       []string
+	templateService   string
+	templateEnv       string
+	templateNamespace string
+	templateFile      string
+	templateDir       string
+	templateNoUpsert  bool
+	templateTags      []string
 )
 
 func init() {
@@ -173,4 +173,3 @@ func runTemplate(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-

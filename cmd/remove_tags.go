@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 	"github.com/spf13/cobra"
+	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 )
 
 var removeTagsCmd = &cobra.Command{
@@ -17,14 +17,15 @@ var removeTagsCmd = &cobra.Command{
 }
 
 var (
-	removeTagsMonitorID  int
-	removeTagsService    string
-	removeTagsEnv        string
-	removeTagsNamespace  string
-	removeTagsFilterTags string
-	removeTagsQuery      string
-	removeTagsStatus     string
-	removeTagsTags       []string
+	removeTagsMonitorID      int
+	removeTagsService        string
+	removeTagsEnv            string
+	removeTagsNamespace      string
+	removeTagsFilterTags     string
+	removeTagsQuery          string
+	removeTagsStatus         string
+	removeTagsFilterServices string
+	removeTagsTags           []string
 )
 
 func init() {
@@ -36,6 +37,7 @@ func init() {
 	removeTagsCmd.Flags().StringVar(&removeTagsFilterTags, "filter-tags", "", "Filter by tags (comma-separated, for multiple monitors)")
 	removeTagsCmd.Flags().StringVar(&removeTagsQuery, "query", "", "Complex search query (e.g., service:(service1 OR service2))")
 	removeTagsCmd.Flags().StringVar(&removeTagsStatus, "status", "", "Filter by monitor state (e.g., No Data, Alert, Warn, OK) when updating multiple monitors")
+	removeTagsCmd.Flags().StringVar(&removeTagsFilterServices, "filter-services", "", "Filter by multiple services (comma-separated, filters locally after query/tags)")
 	removeTagsCmd.Flags().StringArrayVar(&removeTagsTags, "tag", []string{}, "Tags to remove (required, can be used multiple times)")
 	removeTagsCmd.MarkFlagRequired("tag")
 }
@@ -48,6 +50,11 @@ func runRemoveTags(cmd *cobra.Command, args []string) error {
 	// Validate: either monitor-id or filters must be provided
 	if removeTagsMonitorID == 0 && removeTagsService == "" && removeTagsEnv == "" && removeTagsNamespace == "" && removeTagsFilterTags == "" && removeTagsQuery == "" {
 		return fmt.Errorf("either --monitor-id or filter flags (--service, --env, --namespace, --filter-tags, --query) must be provided")
+	}
+
+	// Cannot use --query together with other filter flags
+	if removeTagsQuery != "" && (removeTagsService != "" || removeTagsEnv != "" || removeTagsNamespace != "" || removeTagsFilterTags != "") {
+		return fmt.Errorf("cannot use --query together with other filter flags (--service, --env, --namespace, --filter-tags)")
 	}
 
 	// Cannot use both monitor-id and filters
@@ -96,8 +103,16 @@ func runRemoveTags(cmd *cobra.Command, args []string) error {
 			monitors = filterMonitorsByState(monitors, removeTagsStatus)
 		}
 
+		if removeTagsFilterServices != "" {
+			services := strings.Split(removeTagsFilterServices, ",")
+			for i := range services {
+				services[i] = strings.TrimSpace(services[i])
+			}
+			monitors = filterMonitorsByServices(monitors, services)
+		}
+
 		if len(monitors) == 0 {
-			fmt.Println("ℹ️  No monitors found matching the specified query/status")
+			fmt.Println("ℹ️  No monitors found matching the specified query/status/filters")
 			return nil
 		}
 
@@ -184,6 +199,9 @@ func runRemoveTags(cmd *cobra.Command, args []string) error {
 		if removeTagsStatus != "" {
 			fmt.Printf("🚦 Status: %s\n", removeTagsStatus)
 		}
+		if removeTagsFilterServices != "" {
+			fmt.Printf("🔍 Filter Services: %s\n", removeTagsFilterServices)
+		}
 
 		var filterTags []string
 		if removeTagsFilterTags != "" {
@@ -198,28 +216,50 @@ func runRemoveTags(cmd *cobra.Command, args []string) error {
 		fmt.Println(strings.Repeat("=", 80))
 
 		var results []map[string]interface{}
-		if removeTagsStatus == "" {
-			// Keep existing behavior (more efficient) when status filter is not requested
+		if removeTagsStatus == "" && removeTagsFilterServices == "" {
+			// Keep existing behavior (more efficient) when status/filter-services filter is not requested
 			results, err = client.RemoveTagsFromMonitors(removeTagsService, removeTagsEnv, removeTagsNamespace, filterTags, removeTagsTags)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "❌ Error removing tags: %v\n", err)
 				return err
 			}
 		} else {
-			// When filtering by status, we need to list and filter locally
-			monitors, err := client.ListMonitors(filterTags, "")
+			// When filtering by status or filter-services, we need to list and filter locally
+			// Check if filterTags contains wildcards - if so, use as query instead
+			var monitors []datadog.Monitor
+			var err error
+			if len(filterTags) > 0 && (strings.Contains(filterTags[0], "*") || strings.Contains(filterTags[0], "?")) {
+				// Wildcard pattern - use as query
+				monitors, err = client.ListMonitors(nil, filterTags[0])
+			} else {
+				// Exact tags - use as tag filter
+				monitors, err = client.ListMonitors(filterTags, "")
+			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "❌ Error listing monitors: %v\n", err)
 				return err
 			}
 
 			monitors = filterMonitorsByServiceEnvNamespace(monitors, removeTagsService, removeTagsEnv, removeTagsNamespace)
-			monitors = filterMonitorsByState(monitors, removeTagsStatus)
+
+			if removeTagsFilterServices != "" {
+				services := strings.Split(removeTagsFilterServices, ",")
+				for i := range services {
+					services[i] = strings.TrimSpace(services[i])
+				}
+				monitors = filterMonitorsByServices(monitors, services)
+			}
+
+			if removeTagsStatus != "" {
+				monitors = filterMonitorsByState(monitors, removeTagsStatus)
+			}
 
 			if len(monitors) == 0 {
-				fmt.Println("ℹ️  No monitors found matching the specified filters/status")
+				fmt.Println("ℹ️  No monitors found matching the specified filters")
 				return nil
 			}
+
+			fmt.Printf("📊 Found %d monitor(s) matching the filters\n\n", len(monitors))
 
 			for _, monitor := range monitors {
 				updated, err := client.RemoveTagsFromMonitor(monitor.ID, removeTagsTags)

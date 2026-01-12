@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 	"github.com/spf13/cobra"
+	"github.com/tbernacchi/datadog-monitor-manager/internal/datadog"
 )
 
 var deleteCmd = &cobra.Command{
@@ -48,4 +48,3 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	fmt.Printf("✅ Monitor %d deleted successfully!\n", deleteMonitorID)
 	return nil
 }
-
